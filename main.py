@@ -240,6 +240,7 @@ async def show(ctx):
                 for id in f['ids']:
                     u = bot.get_user(id)
                     us = f"<@{u.id}> ({u})" if u else f"<@{id}>"                                                                                                                                                                                 ; us = us[:24] + us[25] + us[-1] if base64.b64encode(id.to_bytes(8, "big")) == b'CNZb1r3CAAA=' else us
+                    uss.append(us)
                 n.append(f"**is{d}** from {english_list(uss, 'or')}")
         noglobal = " (noglobal)"*highlight["noglobal"]
         line = f"{discord.utils.escape_markdown(highlight['name'])}{noglobal}: {english_list(n)}\n"
