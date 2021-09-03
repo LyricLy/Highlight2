@@ -133,7 +133,7 @@ def merge_filters(filters):
 
 @bot.event
 async def on_raw_reaction_add(payload):
-    last_active[(payload.channel_id, payload.user_id)]
+    last_active[(payload.channel_id, payload.user_id)] = time.time()
 
 @bot.event
 async def on_message_edit(before, after):
