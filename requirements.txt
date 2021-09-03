@@ -1,0 +1,2 @@
+git+https://github.com/Rapptz/discord.py@master
+google-re2>=0.2.20210901,<0.3
