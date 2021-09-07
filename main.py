@@ -48,6 +48,8 @@ settings = {
 
 @bot.group(invoke_without_command=True, name="settings", aliases=["opt", "cfg", "config"])
 async def _settings(ctx):
+    """Display or set configuration options."""
+
     user = get_user(ctx.author)
     embed = discord.Embed()
     for opt, (cmd_name, display_name, description, _, _) in settings.items():
@@ -113,7 +115,7 @@ async def send_highlight(user, patterns, msg, context):
         elif len(content) > 700:
             content= f'{content[:700]}...'
 
-        lines.append(f"[{timestamp}] {message.author.display_name}: {content}")
+        lines.append(f"[{timestamp}] {message.author.display_name}: {sanitize_markdown(content)}")
 
     embed = discord.Embed(description='\n'.join(lines))
     embed.add_field(name="\u200b", value=f"[Jump to message]({msg.jump_url})")
@@ -212,6 +214,7 @@ async def on_message(message):
                 # they spoke during the sleep
                 continue
 
+            # TODO: fix all this shit
             before = (await message.channel.history(before= message, limit= 2).flatten())[::-1]
             after= await message.channel.history(after= message, limit= 2).flatten()
             before.append(message)
@@ -379,6 +382,8 @@ async def migrate(ctx):
 
 @bot.command()
 async def block(ctx, *, what: Union[discord.TextChannel, discord.User]):
+    """Block a user or channel from activating highlights."""
+
     user = get_user(ctx.author)
     blocked = user.setdefault("blocked", [])
     if what.id in blocked:
@@ -390,6 +395,8 @@ async def block(ctx, *, what: Union[discord.TextChannel, discord.User]):
 
 @bot.command()
 async def unblock(ctx, *, what: Union[discord.TextChannel, discord.User]):
+    """Unblock a user or channel."""
+
     user = get_user(ctx.author)
     blocked = user.setdefault("blocked", [])
     try:
