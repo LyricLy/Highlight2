@@ -25,6 +25,7 @@ bot = commands.Bot(
     allowed_mentions=discord.AllowedMentions(everyone=False),
     intents=intents,
 )
+bot.load_extension("jishaku")
 message_cache = defaultdict(list)
 last_active = defaultdict(float)
 
