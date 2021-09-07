@@ -73,10 +73,48 @@ def save():
         json.dump(config, f)
     os.replace("config.json.new", "config.json")
 
-async def send_highlight(user, patterns, msg):
-    # TODO: better embed
-    timestamp = discord.utils.format_dt(msg.created_at, 't')  # type: ignore
-    embed = discord.Embed(description=f"[{timestamp}] **{msg.author.display_name}**: {sanitize_markdown(msg.content)}")
+
+regex_cache = {}
+def matches(regex, content, flags):
+    key = (regex, flags)
+
+    try:
+        o = regex_cache[key]
+    except KeyError:
+        options = re.Options()
+        if "i" in flags:
+            options.case_sensitive = False
+        if "s" in flags:
+            options.dot_nl = True
+        options.never_capture = True
+        o = re.compile(regex, options)
+        regex_cache[key] = o
+
+    return o.search(content)
+
+def english_list(l, merger="and"):
+    if len(l) == 1:
+        return f"{l[0]}"
+    elif len(l) == 2:
+        return f"{l[0]} {merger} {l[1]}"
+    else:
+        return f"{', '.join(l[:-1])}, {merger} {l[-1]}"
+
+async def send_highlight(user, patterns, msg, context):
+    lines = []
+    for message in context:
+        timestamp = discord.utils.format_dt(message.created_at, 't')  # type: ignore
+        content= message.content
+
+        if content is None:
+            content = ''
+
+        elif len(content) > 700:
+            content= f'{content[:700]}...'
+
+        lines.append(f"[{timestamp}] {message.author.display_name}: {content}")
+
+    embed = discord.Embed(description='\n'.join(lines))
     embed.add_field(name="\u200b", value=f"[Jump to message]({msg.jump_url})")
 
     pattern_string = english_list([repr(x) for x in patterns])
@@ -173,9 +211,15 @@ async def on_message(message):
                 # they spoke during the sleep
                 continue
 
+            before = (await message.channel.history(before= message, limit= 2).flatten())[::-1]
+            after= await message.channel.history(after= message, limit= 2).flatten()
+            before.append(message)
+            context= (before + after)
+            # couldn't find a better way to join a list, message and a list
+
             if get_config(user, "no_repeat"):
                 last_active[(message.channel.id, message.author.id)] = time.time()
-            await send_highlight(user_obj, successes, message)
+            await send_highlight(user_obj, successes, message, context)
 
 
 @bot.command(aliases=["list"])
