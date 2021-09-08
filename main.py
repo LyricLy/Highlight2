@@ -103,19 +103,20 @@ def english_list(l, merger="and"):
     else:
         return f"{', '.join(l[:-1])}, {merger} {l[-1]}"
 
-async def send_highlight(user, patterns, msg, context):
+async def send_highlight(user, patterns, msg):
+    before = await msg.channel.history(before=msg, limit=2, oldest_first=True).flatten()
+    after = await msg.channel.history(after=msg, limit=2, oldest_first=True).flatten()
+
     lines = []
-    for message in context:
-        timestamp = discord.utils.format_dt(message.created_at, 't')  # type: ignore
-        content= message.content
+    for message, *bold in before + [(msg, True)] + after:
+        timestamp = discord.utils.format_dt(message.created_at, "t")  # type: ignore
+        timestamp_str = f"**[{timestamp}]**" if bold else f"[{timestamp}]"
 
-        if content is None:
-            content = ''
+        content = message.content
+        if len(content) > 700:
+            content = f"{content[:700]}..."
 
-        elif len(content) > 700:
-            content= f'{content[:700]}...'
-
-        lines.append(f"[{timestamp}] {message.author.display_name}: {sanitize_markdown(content)}")
+        lines.append(f"[{timestamp}] **{message.author.display_name}**: {sanitize_markdown(content)}")
 
     embed = discord.Embed(description='\n'.join(lines))
     embed.add_field(name="\u200b", value=f"[Jump to message]({msg.jump_url})")
@@ -214,16 +215,9 @@ async def on_message(message):
                 # they spoke during the sleep
                 continue
 
-            # TODO: fix all this shit
-            before = (await message.channel.history(before= message, limit= 2).flatten())[::-1]
-            after= await message.channel.history(after= message, limit= 2).flatten()
-            before.append(message)
-            context= (before + after)
-            # couldn't find a better way to join a list, message and a list
-
             if get_config(user, "no_repeat"):
                 last_active[(message.channel.id, message.author.id)] = time.time()
-            await send_highlight(user_obj, successes, message, context)
+            await send_highlight(user_obj, successes, message)
 
 
 @bot.command(aliases=["list"])
