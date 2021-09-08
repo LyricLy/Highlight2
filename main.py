@@ -108,10 +108,10 @@ async def send_highlight(user, patterns, msg):
     after = await msg.channel.history(after=msg, limit=2, oldest_first=True).flatten()
 
     lines = []
-    for message in before + [(msg,)] + after:
-        bold = isinstance(message, tuple)
+    for message in before + [None] + after:
+        bold = not message
         if bold:
-            msg ,= msg
+            message = msg
         timestamp = discord.utils.format_dt(message.created_at, "t")  # type: ignore
         timestamp_str = f"**[{timestamp}]**" if bold else f"[{timestamp}]"
 
