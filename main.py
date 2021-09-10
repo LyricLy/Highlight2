@@ -166,18 +166,21 @@ async def on_message(message):
     if message.author.bot:
         return
     await bot.process_commands(message)
+    if not message.guild:
+        return
 
     last_active[(message.channel.id, message.author.id)] = time.time()
 
     users_to_highlight = defaultdict(list)
     for id, user in config.items():
-        if not message.guild:
-            continue
         user_obj = message.guild.get_member(int(id))
         if not user_obj:
             continue
 
-        if (not message.guild or not message.channel.permissions_for(user_obj).read_messages or not user.get("enabled", True)
+        if get_config(user, "no_repeat") and user_obj.mentioned_in(message):
+            last_active[(message.channel.id, int(id))] = time.time()
+
+        if (not message.channel.permissions_for(user_obj).read_messages or not user.get("enabled", True)
          or message.author.id in (blocked := user.get("blocked", [])) or message.channel.id in blocked):
             continue
 
