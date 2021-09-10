@@ -26,7 +26,6 @@ bot = commands.Bot(
     intents=intents,
 )
 bot.load_extension("jishaku")
-message_cache = defaultdict(list)
 last_active = defaultdict(float)
 
 try:
@@ -112,14 +111,17 @@ async def send_highlight(user, patterns, msg):
         bold = not message
         if bold:
             message = msg
+
         timestamp = discord.utils.format_dt(message.created_at, "t")  # type: ignore
-        timestamp_str = f"**[{timestamp}]**" if bold else f"[{timestamp}]"
+        head_str = f"[{timestamp}] {message.author.display_name}"
+        if bold:
+            head_str = f"**{head_str}**"
 
         content = message.content
         if len(content) > 700:
             content = f"{content[:700]}..."
 
-        lines.append(f"[{timestamp}] **{message.author.display_name}**: {sanitize_markdown(content)}")
+        lines.append(f"{head_str}: {sanitize_markdown(content)}")
 
     embed = discord.Embed(description='\n'.join(lines))
     embed.add_field(name="\u200b", value=f"[Jump to message]({msg.jump_url})")
@@ -219,7 +221,7 @@ async def on_message(message):
                 continue
 
             if get_config(user, "no_repeat"):
-                last_active[(message.channel.id, message.author.id)] = time.time()
+                last_active[(message.channel.id, int(id))] = time.time()
             await send_highlight(user_obj, successes, message)
 
 
