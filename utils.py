@@ -78,6 +78,13 @@ class View:
             self.idx += 1
             if self.eof():
                 break
+            if c == "\\":
+                # next char is escaped, ignore it
+                s += self.peek()
+                self.idx += 1
+                if self.eof():
+                    break
+                continue
             c = self.peek()
             if c in ("*", "_", "|", "~", "`"):
                 break
@@ -90,8 +97,16 @@ class View:
         return self.idx >= len(self.text)
 
     def do(self, t):
-        if self.stack and self.stack[-1][0] == t:
-            self.stack.pop()
+        if self.stack and "`" in self.stack[-1] and self.stack[-1][0] != t:
+            # codeblocks escape everything
+            return
+
+        i = len(self.stack)-1
+        while i >= 0:
+            if self.stack[i][0] == t:
+                del self.stack[i:]
+                break
+            i -= 1
         else:
             self.stack.append((t, len(self.out)-1))
 
