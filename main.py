@@ -13,6 +13,7 @@ from discord.ext import commands
 
 import hlparser as parser
 from utils import regex_min, render_pattern, matches, english_list, sanitize_markdown
+from help import HighlightHelpCommand
 
 
 intents = discord.Intents.default()
@@ -24,6 +25,7 @@ bot = commands.Bot(
     max_messages=None,
     allowed_mentions=discord.AllowedMentions(everyone=False),
     intents=intents,
+    help_command=HighlightHelpCommand(),
 )
 bot.load_extension("jishaku")
 last_active = defaultdict(float)
