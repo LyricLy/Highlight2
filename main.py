@@ -177,11 +177,11 @@ def check_single_debounce(user, key):
     last_highlight[key] = time.time()
     return True
 
-def do_debounce(user_id, user, successes):
+def do_debounce(channel_id, user_id, user, successes):
     if get_config(user, "debounce_global"):
-        return successes*check_single_debounce(user, user_id)
+        return successes*check_single_debounce(user, (channel_id, user_id))
     else:
-        return [success for success in successes if check_single_debounce(user, (user_id, success))]
+        return [success for success in successes if check_single_debounce(user, (channel_id, user_id, success))]
 
 @bot.event
 async def on_message(message):
@@ -245,7 +245,7 @@ async def on_message(message):
                 # they spoke during the sleep
                 continue
 
-            successes = do_debounce(int(id), user, successes)
+            successes = do_debounce(message.channel.id, int(id), user, successes)
             if not successes:
                 continue
 
