@@ -29,6 +29,7 @@ bot = commands.Bot(
 )
 bot.load_extension("jishaku")
 last_active = defaultdict(float)
+last_highlight = defaultdict(float)
 
 try:
     with open("config.json") as f:
@@ -44,7 +45,12 @@ settings = {
                                                     "This is the amount of time it takes after your last activity before you're no longer considered active.", 30, int),
     "after_time": ("delay-after", "Delay after",
                    "The delay after a highlight is triggered before the DM is sent. If you're active in this time, the highlight is cancelled.", 10, int),
-    "no_repeat": ("no-repeat", "Don't repeat", "Treat highlights as 'activity', so you won't be highlighted more than once in a row.", False, bool),
+    "debounce_time": ("debounce-cooldown", "Debounce cooldown", "The cooldown between highlights so you don't get highlighted multiple times in a row.", 10, int),
+    "debounce_global": ("debounce-global", "Global debouncing", "Whether to apply the debounce cooldown across all rules instead of per rule.", False, bool),
+    "debounce_fixed": ("debounce-fixed", "Fixed debounce window", "Apply a fixed window for debouncing. "
+                                                                  "Without this option enabled, the debounce cooldown will reset every time a highlight triggers, "
+                                                                  "even if the cooldown has not run out yet.", True, bool),
+    "mention_activity": ("mention-activity", "Mention activity", "Treat people mentioning (pinging) you as activity for the purposes of cooldowns.", False, bool),
 }
 
 @bot.group(invoke_without_command=True, name="settings", aliases=["opt", "cfg", "config"])
@@ -163,6 +169,20 @@ async def on_message_edit(before, after):
 async def on_typing(channel, user, when):
     last_active[(channel.id, user.id)] = when.timestamp()
 
+def check_single_debounce(user, key):
+    if time.time()-last_highlight[key] <= get_config(user, "debounce_time"):
+        if not get_config(user, "debounce_fixed"):
+            last_highlight[key] = time.time()
+        return False
+    last_highlight[key] = time.time()
+    return True
+
+def do_debounce(user_id, user, successes):
+    if get_config(user, "debounce_global"):
+        return successes*check_single_debounce(user, user_id)
+    else:
+        return [success for success in successes if check_single_debounce(user, (user_id, success))]
+
 @bot.event
 async def on_message(message):
     if message.author.bot:
@@ -179,7 +199,7 @@ async def on_message(message):
         if not user_obj:
             continue
 
-        if get_config(user, "no_repeat") and user_obj.mentioned_in(message):
+        if get_config(user, "mention_activity") and user_obj.mentioned_in(message):
             last_active[(message.channel.id, int(id))] = time.time()
 
         if (not message.channel.permissions_for(user_obj).read_messages or not user.get("enabled", True)
@@ -187,7 +207,7 @@ async def on_message(message):
             continue
 
         start_last_active = last_active.get((message.channel.id, int(id)), 0)
-        if time.time()-start_last_active < get_config(user, "before_time"):
+        if time.time()-start_last_active <= get_config(user, "before_time"):
             continue
 
         successes = []
@@ -225,8 +245,10 @@ async def on_message(message):
                 # they spoke during the sleep
                 continue
 
-            if get_config(user, "no_repeat"):
-                last_active[(message.channel.id, int(id))] = time.time()
+            successes = do_debounce(int(id), user, successes)
+            if not successes:
+                continue
+
             await send_highlight(user_obj, successes, message)
 
 
