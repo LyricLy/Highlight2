@@ -219,7 +219,7 @@ async def on_message(message):
                 if t == "literal":
                     x = matches(r"\b" + re.escape(f['text']) + r"\b", message.content, "i")
                 elif t == "regex":
-                    x = matches(f['pattern'], message.content, f['flags'])
+                    x = matches(f['regex'], message.content, f['flags'])
                 elif t == "guild":
                     x = message.guild.id in f['ids']
                 elif t == "channel":
