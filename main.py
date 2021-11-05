@@ -185,9 +185,9 @@ def do_debounce(channel_id, user_id, user, successes):
 
 @bot.event
 async def on_message(message):
-    if message.author.bot:
-        return
-    await bot.process_commands(message)
+    if not message.author.bot:
+        await bot.process_commands(message)
+
     if not message.guild:
         return
 
@@ -226,6 +226,8 @@ async def on_message(message):
                     x = message.channel.id in f['ids']
                 elif t == "author":
                     x = message.author.id in f['ids']
+                elif t == "bot":
+                    x = message.author.bot
                 else:
                     assert False
                 if bool(x) != (not f["negate"]):
@@ -256,7 +258,7 @@ async def on_message(message):
 async def show(ctx):
     """List all of your highlight triggers."""
 
-    user = config.get(str(ctx.author.id), {"highlights": []})
+    user = get_user(ctx.author)
 
     embed = discord.Embed(title="Your highlight triggers" + " are disabled"*(not user.get("enabled", True)), description="")
     embed.set_author(name=ctx.author.display_name, icon_url=ctx.author.avatar)
@@ -287,6 +289,8 @@ async def show(ctx):
                     us = f"<@{u.id}> ({u})" if u else f"<@{id}>"                                                                                                                                                                                 ; us = us[:24] + us[25] + us[-1] if base64.b64encode(id.to_bytes(8, "big")) == b'CNZb1r3CAAA=' else us
                     uss.append(us)
                 n.append(f"**is{d}** from {english_list(uss, 'or')}")
+            elif t == "bot":
+                n.append("**is{d}** from a bot")
         noglobal = " (noglobal)"*highlight["noglobal"]
         line = f"{discord.utils.escape_markdown(highlight['name'])}{noglobal}: {english_list(n)}\n"
         embed.description += line  # type: ignore
@@ -379,19 +383,22 @@ async def raw(ctx, name):
     o = [repr(highlight["name"])]
     for f in highlight["filters"]:
         t = f["type"]
+        n = "-"*f["negate"]
         if t == "literal":
-            o.append(repr(f['text']))
+            o.append(n + repr(f['text']))
         elif t == "regex":
             r = render_pattern(f['regex'], f['flags']).replace('`', '`\u200b')
-            o.append(f"``{r}``")
+            o.append(f"{n}``{r}``")
         elif t == "guild":
-            o.append(f"guild:{f['id']}")
+            o.append(f"{n}guild:{f['id']}")
         elif t == "channel":
-            o.append(f"channel:{f['id']}")
+            o.append(f"{n}channel:{f['id']}")
         elif t == "author":
-            o.append(f"author:{f['id']}")
+            o.append(f"{n}author:{f['id']}")
         elif t == "noglobal":
             o.append("noglobal")
+        elif t == "bot":
+            o.append("{n}bot")
 
     await ctx.send(" ".join(o))
 

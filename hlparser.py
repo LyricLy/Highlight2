@@ -186,6 +186,8 @@ class StringView:
             return {"type": "author", "id": user.id, "negate": negate}
         elif self.consume_literal("noglobal"):
             return {"type": "noglobal"}
+        elif self.consume_literal("bot"):
+            return {"type": "bot", "negate": negate}
         else:
             self.fail(f"unknown start of token '{self.peek()}' ({unicodedata.name(self.peek()).title()})", "wrap literal strings in quotes and regular expressions in slashes")
 
