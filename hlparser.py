@@ -1,6 +1,7 @@
 import unicodedata
 
 import re2 as re
+from re import error as ReError
 import discord
 from discord.ext import commands
 
@@ -144,8 +145,11 @@ class StringView:
                 flags += self.peek()
                 self.consume()
 
-            if not regex_min(p):
-                self.fail("regex should not match the empty string", "if you want to match any message, you don't need to provide a regex")
+            try:
+                if not regex_min(p):
+                    self.fail("regex should not match the empty string", "if you want to match any message, you don't need to provide a regex")
+            except ReError as e:
+                self.fail(f"regex is invalid: {e}")
             return {"type": "regex", "regex": p, "flags": "".join(sorted(flags)), "negate": negate}
         elif self.consume_literal("guild:"):
             w = self.get_quoted_word()
