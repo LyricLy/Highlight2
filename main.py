@@ -240,15 +240,12 @@ async def on_message(message):
                 global_result = False
 
         successes = [x["name"] for x in successes if global_result or x["noglobal"]]
+        successes = do_debounce(message.channel.id, int(id), user, successes)
 
         if successes:
             await asyncio.sleep(get_config(user, "after_time"))
             if last_active.get((message.channel.id, int(id)), 0) > start_last_active:
                 # they spoke during the sleep
-                continue
-
-            successes = do_debounce(message.channel.id, int(id), user, successes)
-            if not successes:
                 continue
 
             await send_highlight(user_obj, successes, message)
