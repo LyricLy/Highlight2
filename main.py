@@ -207,7 +207,8 @@ async def on_message(message):
             continue
 
         start_last_active = last_active.get((message.channel.id, int(id)), 0)
-        failed_due_to_cooldown = time.time()-start_last_active <= get_config(user, "before_time")
+        activity_failure = time.time()-start_last_active <= get_config(user, "before_time")
+        activity_failure = activity_failure or user_obj.voice and user_obj.voice.channel and user_obj.voice.channel.category == message.channel.category
 
         successes = []
         global_result = True
@@ -241,7 +242,7 @@ async def on_message(message):
         successes = [x["name"] for x in successes if global_result or x["noglobal"]]
         successes = do_debounce(message.channel.id, int(id), user, successes)
 
-        if successes and not failed_due_to_cooldown:
+        if successes and not activity_failure:
             await asyncio.sleep(get_config(user, "after_time"))
             if last_active.get((message.channel.id, int(id)), 0) > start_last_active:
                 # they spoke during the sleep
