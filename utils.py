@@ -78,15 +78,9 @@ class View:
             self.idx += 1
             if self.eof():
                 break
-            if c == "\\":
-                # next char is escaped, ignore it
-                s += self.peek()
-                self.idx += 1
-                if self.eof():
-                    break
-                continue
+            escape = c == "\\"
             c = self.peek()
-            if c in ("*", "_", "|", "~", "`"):
+            if not escape and c in ("*", "_", "|", "~", "`"):
                 break
         self.out.append(s)
 
