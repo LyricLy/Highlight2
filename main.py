@@ -18,6 +18,7 @@ from help import HighlightHelpCommand
 
 intents = discord.Intents.default()
 intents.members = True
+intents.message_content = True
 
 bot = commands.Bot(
     command_prefix=commands.when_mentioned,
