@@ -112,8 +112,8 @@ def english_list(l, merger="and"):
         return f"{', '.join(l[:-1])}, {merger} {l[-1]}"
 
 async def send_highlight(user, patterns, msg):
-    before = (await msg.channel.history(before=msg, limit=2).flatten())[::-1]
-    after = await msg.channel.history(after=msg, limit=2).flatten()
+    before = [x async for x in msg.channel.history(before=msg, limit=2)][::-1]
+    after = [x async for x in msg.channel.history(after=msg, limit=2)]
 
     lines = []
     for message in before + [None] + after:
