@@ -152,7 +152,7 @@ class StringView:
                 pass
             try:
                 re.compile(p)
-            except re.error:
+            except re.error as e:
                 self.fail(f"regex is invalid: {e}")
             return {"type": "regex", "regex": p, "flags": "".join(sorted(flags)), "negate": negate}
         elif self.consume_literal("guild:"):
