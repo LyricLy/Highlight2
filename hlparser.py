@@ -153,7 +153,7 @@ class StringView:
             try:
                 re.compile(p)
             except re.error as e:
-                self.fail(f"regex is invalid: {e}")
+                self.fail(f"regex is invalid: {e.args[0].decode()}")
             return {"type": "regex", "regex": p, "flags": "".join(sorted(flags)), "negate": negate}
         elif self.consume_literal("guild:"):
             w = self.get_quoted_word()
