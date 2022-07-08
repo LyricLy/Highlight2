@@ -98,7 +98,10 @@ def matches(regex, content, flags):
         if "s" in flags:
             options.dot_nl = True
         options.never_capture = True
-        o = re.compile(regex, options)
+        try:
+            o = re.compile(regex, options)
+        except re.error:
+            return False
         regex_cache[key] = o
 
     return o.search(content)

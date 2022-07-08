@@ -148,7 +148,11 @@ class StringView:
             try:
                 if not regex_min(p):
                     self.fail("regex should not match the empty string", "if you want to match any message, you don't need to provide a regex")
-            except ReError as e:
+            except ReError:
+                pass
+            try:
+                re.compile(p)
+            except re.error:
                 self.fail(f"regex is invalid: {e}")
             return {"type": "regex", "regex": p, "flags": "".join(sorted(flags)), "negate": negate}
         elif self.consume_literal("guild:"):
