@@ -125,7 +125,7 @@ async def send_highlight(user, patterns, msg):
             message = msg
 
         timestamp = discord.utils.format_dt(message.created_at, "t")  # type: ignore
-        head_str = f"[{timestamp}] {message.author.display_name}"
+        head_str = f"[{timestamp}] {discord.utils.escape_markdown(message.author.display_name)}"
         if bold:
             head_str = f"**{head_str}**"
 
