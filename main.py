@@ -28,7 +28,9 @@ bot = commands.Bot(
     intents=intents,
     help_command=HighlightHelpCommand(),
 )
-bot.load_extension("jishaku")
+async def setup():
+    await bot.load_extension("jishaku")
+bot.setup_hook = setup
 last_active = defaultdict(float)
 last_highlight = defaultdict(float)
 
