@@ -168,7 +168,7 @@ class StringView:
             return {"type": "guild", "id": guild.id, "negate": negate}
         elif self.consume_literal("channel:") or self.consume_literal("in:"):
             w = self.get_quoted_word()
-            if m := re.fullmatch("<#[0-9]+>", w):
+            if m := re.fullmatch("<#([0-9]+)>", w):
                 w = m.group(1)
             channel = discord.utils.get(guild.channels, name=w.removeprefix("#"))
             if not channel:
@@ -181,7 +181,7 @@ class StringView:
             return {"type": "channel", "id": channel.id, "negate": negate}
         elif self.consume_literal("author:") or self.consume_literal("from:") or self.consume_literal("user"):
             w = self.get_quoted_word()
-            if m := re.fullmatch("<@!?[0-9]+>", w):
+            if m := re.fullmatch("<@!?([0-9]+)>", w):
                 w = m.group(1)
             user = guild.get_member_named(w)
             if not user:
