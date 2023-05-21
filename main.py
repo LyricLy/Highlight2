@@ -383,7 +383,11 @@ async def raw(ctx, name):
     else:
         return await ctx.send("You don't have a trigger with that name.")
 
-    o = [repr(highlight["name"])]
+    if any(c.isspace() or c == '"' for c in name):
+        name = name.replace('"', r'\"')
+        name = f'"{name}"'
+
+    o = [bot.user.mention, "edit", name]
     for f in highlight["filters"]:
         t = f["type"]
         n = "-"*f["negate"]
