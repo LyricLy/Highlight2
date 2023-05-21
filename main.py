@@ -9,6 +9,7 @@ from typing import Union
 
 import re2 as re
 import discord
+from discord.utils import escape_markdown as escape
 from discord.ext import commands
 
 import hlparser as parser
@@ -127,7 +128,7 @@ async def send_highlight(user, patterns, msg):
             message = msg
 
         timestamp = discord.utils.format_dt(message.created_at, "t")  # type: ignore
-        head_str = f"[{timestamp}] {discord.utils.escape_markdown(message.author.display_name)}"
+        head_str = f"[{timestamp}] {escape(message.author.display_name)}"
         if bold:
             head_str = f"**{head_str}**"
 
@@ -272,14 +273,14 @@ async def show(ctx):
             t = f["type"]
             d = " not" * f['negate']
             if t == "literal":
-                n.append(f"**does{d}** contain {f['text']!r}")
+                n.append(f"**does{d}** contain {escape(repr(f['text']))}")
             elif t == "regex":
-                n.append(f"**does{d}** match {render_pattern(f['regex'], f['flags'])}")
+                n.append(f"**does{d}** match {escape(render_pattern(f['regex'], f['flags']))}")
             elif t == "guild":
                 gss = []
                 for id in f['ids']:
                     g = bot.get_guild(id)
-                    gs = f"server {g.name}" if g else f"<unknown server {id}>"
+                    gs = f"server {escape(g.name)}" if g else f"<unknown server {id}>"
                     gss.append(gs)
                 n.append(f"**is{d}** in {english_list(gss, 'or')}")
             elif t == "channel":
@@ -295,8 +296,8 @@ async def show(ctx):
             elif t == "bot":
                 n.append("**is{d}** from a bot")
         noglobal = " (noglobal)"*highlight["noglobal"]
-        line = f"{highlight['name']}{noglobal}: {english_list(n)}\n"
-        embed.description += discord.utils.escape_markdown(line)  # type: ignore
+        line = f"{escape(highlight['name'])}{noglobal}: {english_list(n)}\n"
+        embed.description += line  # type: ignore
 
     if not user["highlights"]:
         embed.set_footer(text="You don't have any!")
