@@ -295,8 +295,8 @@ async def show(ctx):
             elif t == "bot":
                 n.append("**is{d}** from a bot")
         noglobal = " (noglobal)"*highlight["noglobal"]
-        line = f"{discord.utils.escape_markdown(highlight['name'])}{noglobal}: {english_list(n)}\n"
-        embed.description += line  # type: ignore
+        line = f"{highlight['name']}{noglobal}: {english_list(n)}\n"
+        embed.description += discord.utils.escape_markdown(line)  # type: ignore
 
     if not user["highlights"]:
         embed.set_footer(text="You don't have any!")
