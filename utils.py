@@ -2,6 +2,7 @@ import sre_parse as sp
 from typing import Any
 
 import re2 as re
+from parse_discord import parse
 
 
 def render_pattern(pattern, flags):
@@ -52,95 +53,5 @@ def english_list(l, merger="and"):
     else:
         return f"{', '.join(l[:-1])}, {merger} {l[-1]}"
 
-
-class View:
-    def __init__(self, text):
-        self.text = text
-        self.idx = 0
-        self.out = []
-        self.stack = []
-
-    def read_some(self, char):
-        count = 0
-        while True:
-            self.idx += 1
-            count += 1
-            if self.eof() or self.peek() != char:
-                break
-        self.out.append(char * count)
-        return count
-
-    def read_normal(self):
-        s = ""
-        c = self.peek()
-        while True:
-            s += c
-            self.idx += 1
-            if self.eof():
-                break
-            escape = c == "\\"
-            c = self.peek()
-            if not escape and c in ("*", "_", "|", "~", "`"):
-                break
-        self.out.append(s)
-
-    def peek(self):
-        return self.text[self.idx]
-
-    def eof(self):
-        return self.idx >= len(self.text)
-
-    def do(self, t):
-        if self.stack and "`" in self.stack[-1] and self.stack[-1][0] != t:
-            # codeblocks escape everything
-            return
-
-        i = len(self.stack)-1
-        while i >= 0:
-            if self.stack[i][0] == t:
-                del self.stack[i:]
-                break
-            i -= 1
-        else:
-            self.stack.append((t, len(self.out)-1))
-
-
 def sanitize_markdown(text):
-    view = View(text)
-
-    while not view.eof():
-        c = view.peek()
-        if c == "|":
-            if view.read_some("|") % 5 >= 2:
-                view.do("||")
-        elif c == "~":
-            if view.read_some("~") % 5 >= 2:
-                view.do("~~")
-        elif c == "*":
-            n = view.read_some("*")
-            if n == 3 or (n > 3 and n % 2 == 1):
-                view.do("***")
-            elif n == 2:
-                view.do("**")
-            elif n == 1:
-                view.do("*")
-        elif c == "_":
-            view.read_some("_")
-            # not perfect but I don't give a shit
-            view.do("_")
-        elif c == "`":
-            n = view.read_some("`") % 7
-            if n == 1:
-                view.do("`")
-            elif n == 2:
-                view.do("``")
-            else:
-                view.do("```")
-        else:
-            view.read_normal()
-
-    for _, idx in view.stack:
-        b = "\\"
-        view.out[idx] = f"\\{b.join(view.out[idx])}"
-
-    return "".join(view.out)
+    return str(parse(text))

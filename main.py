@@ -214,8 +214,8 @@ async def on_message(message):
             continue
 
         start_last_active = last_active.get((message.channel.id, int(id)), 0)
-        activity_failure = time.time()-start_last_active <= get_config(user, "before_time")
-        activity_failure = activity_failure or user_obj.voice and user_obj.voice.channel and user_obj.voice.channel.category == message.channel.category
+        activity_failure = (time.time()-start_last_active <= get_config(user, "before_time")
+                         or user_obj.voice and user_obj.voice.channel and user_obj.voice.channel.category == message.channel.category)
 
         successes = []
         global_result = True
