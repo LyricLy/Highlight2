@@ -190,6 +190,39 @@ def do_debounce(channel_id, user_id, user, successes):
     else:
         return [success for success in successes if check_single_debounce(user, (channel_id, user_id, success))]
 
+def successes_of_message(user, message):
+    successes = []
+    global_result = True
+
+    for highlight in user["highlights"]:
+        is_global = highlight["name"] == "global"
+        for f in merge_filters(highlight["filters"]):
+            t = f["type"]
+            if t == "literal":
+                x = matches(r"\b" + re.escape(f['text']) + r"\b", message.content, "i")
+            elif t == "regex":
+                x = matches(f['regex'], message.content, f['flags'])
+            elif t == "guild":
+                x = message.guild.id in f['ids']
+            elif t == "channel":
+                x = message.channel.id in f['ids']
+            elif t == "author":
+                x = message.author.id in f['ids']
+            elif t == "bot":
+                x = message.author.bot
+            else:
+                assert False
+            if bool(x) != (not f["negate"]):
+                break
+        else:
+            if not is_global:
+                successes.append(highlight)
+            continue
+        if is_global:
+            global_result = False
+
+    return [x["name"] for x in successes if global_result or x["noglobal"]]
+
 @bot.event
 async def on_message(message):
     if not message.author.bot:
@@ -217,36 +250,7 @@ async def on_message(message):
         activity_failure = (time.time()-start_last_active <= get_config(user, "before_time")
                          or user_obj.voice and user_obj.voice.channel and user_obj.voice.channel.category == message.channel.category)
 
-        successes = []
-        global_result = True
-        for highlight in user["highlights"]:
-            is_global = highlight["name"] == "global"
-            for f in merge_filters(highlight["filters"]):
-                t = f["type"]
-                if t == "literal":
-                    x = matches(r"\b" + re.escape(f['text']) + r"\b", message.content, "i")
-                elif t == "regex":
-                    x = matches(f['regex'], message.content, f['flags'])
-                elif t == "guild":
-                    x = message.guild.id in f['ids']
-                elif t == "channel":
-                    x = message.channel.id in f['ids']
-                elif t == "author":
-                    x = message.author.id in f['ids']
-                elif t == "bot":
-                    x = message.author.bot
-                else:
-                    assert False
-                if bool(x) != (not f["negate"]):
-                    break
-            else:
-                if not is_global:
-                    successes.append(highlight)
-                continue
-            if is_global:
-                global_result = False
-
-        successes = [x["name"] for x in successes if global_result or x["noglobal"]]
+        successes = successes_of_message(user, message)
         successes = do_debounce(message.channel.id, int(id), user, successes)
 
         if successes and not activity_failure:
@@ -373,6 +377,11 @@ async def enable(ctx):
     get_user(ctx.author)["enabled"] = True
     save()
     await ctx.send("👍")
+
+@bot.command()
+async def test(ctx):
+    """Simulate what would happen if someone sent a certain message, ignoring all delays and debouncing."""
+    await send_highlight(ctx.author, successes_of_message(get_user(ctx.author), ctx.message), ctx.message)
 
 @bot.command()
 async def raw(ctx, name):
