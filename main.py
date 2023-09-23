@@ -381,7 +381,10 @@ async def enable(ctx):
 @bot.command()
 async def test(ctx):
     """Simulate what would happen if someone sent a certain message, ignoring all delays and debouncing."""
-    await send_highlight(ctx.author, successes_of_message(get_user(ctx.author), ctx.message), ctx.message)
+    successes = successes_of_message(get_user(ctx.author), ctx.message)
+    if not successes:
+        return await ctx.send("No highlight matched.")
+    await send_highlight(ctx, successes, ctx.message)
 
 @bot.command()
 async def raw(ctx, name):
