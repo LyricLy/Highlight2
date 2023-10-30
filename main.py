@@ -139,12 +139,12 @@ async def send_highlight(user, patterns, msg):
         lines.append(f"{head_str}: {sanitize_markdown(content)}")
 
     embed = discord.Embed(description='\n'.join(lines))
-    embed.add_field(name="\u200b", value=f"[Jump to message]({msg.jump_url})")
+    embed.add_field(name="\u200b", value=msg.jump_url)
 
     pattern_string = english_list([repr(x) for x in patterns])
     highlights = "Highlight" if len(patterns) == 1 else "Highlights"
     try:
-        await user.send(f'{highlights} {pattern_string} in **{msg.guild.name}**/{msg.channel.mention} by {msg.author.mention} ({msg.author})', embed=embed)
+        await user.send(f'{highlights} {pattern_string} in {msg.channel.mention} (**{msg.guild.name}**/#{msg.channel.name}) by {msg.author.mention}', embed=embed)
     except discord.HTTPException:
         pass
 
