@@ -144,7 +144,7 @@ async def send_highlight(user, patterns, msg):
     pattern_string = english_list([repr(x) for x in patterns])
     highlights = "Highlight" if len(patterns) == 1 else "Highlights"
     try:
-        await user.send(f'{highlights} {pattern_string} in {msg.channel.mention} (**{msg.guild.name}**/#{msg.channel.name}) by {msg.author.mention}', embed=embed)
+        await user.send(f'{highlights} {pattern_string} in {msg.channel.mention} (on **{msg.guild.name}**) by {msg.author.mention} ({msg.author.display_name})', embed=embed)
     except discord.HTTPException:
         pass
 
