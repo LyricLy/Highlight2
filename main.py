@@ -434,7 +434,7 @@ async def migrate(ctx):
     await ctx.send("👍")
 
 @bot.command()
-async def block(ctx, *, what: Union[discord.TextChannel, discord.User]):
+async def block(ctx, *, what: Union[discord.TextChannel, discord.User, discord.Thread]):
     """Block a user or channel from activating highlights."""
 
     user = get_user(ctx.author)
@@ -447,7 +447,7 @@ async def block(ctx, *, what: Union[discord.TextChannel, discord.User]):
         await ctx.send("👍")
 
 @bot.command()
-async def unblock(ctx, *, what: Union[discord.TextChannel, discord.User]):
+async def unblock(ctx, *, what: Union[discord.TextChannel, discord.User, discord.Thread]):
     """Unblock a user or channel."""
 
     user = get_user(ctx.author)
