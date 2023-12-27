@@ -340,7 +340,16 @@ async def add(ctx, name, *, text):
         await ctx.send(f"Error while parsing input.\n```{e}```")
     else:
         add_highlight(ctx, name, filters, noglobal)
-        await ctx.send("👍")
+        err = ""
+        if name.startswith(("'", "/")):
+            err += f"Refusing to create trigger with confusing name `{name}`.\n"
+        if not filters:
+            if name.startswith("'"):
+                sq = "'"
+                err += f"I think you meant to write `{ctx.invoked_with} \"{name.strip(sq)}\"`."
+            elif name.startswith("/"):
+                err += f"I think you meant to write `{ctx.invoked_with} {name.strip('/')} {name}`."
+        await ctx.send(err or "👍")
 
 @bot.command()
 async def remove(ctx, *names):
