@@ -337,19 +337,20 @@ async def add(ctx, name, *, text):
     try:
         filters, noglobal = parser.parse(text[1:], ctx)
     except parser.LexFailure as e:
-        await ctx.send(f"Error while parsing input.\n```{e}```")
-    else:
-        add_highlight(ctx, name, filters, noglobal)
-        err = ""
-        if name.startswith(("'", "/")):
-            err += f"Refusing to create trigger with confusing name `{name}`.\n"
+        return await ctx.send(f"Error while parsing input.\n```{e}```")
+
+    if name.startswith(("'", "/")):
+        err = f"Refusing to create trigger with confusing name `{name}`.\n"
         if not filters:
             if name.startswith("'"):
                 sq = "'"
                 err += f"I think you meant to write `{ctx.invoked_with} \"{name.strip(sq)}\"`."
             elif name.startswith("/"):
                 err += f"I think you meant to write `{ctx.invoked_with} \"{name.strip('/')}\" {name}`."
-        await ctx.send(err or "👍")
+        return await ctx.send(err)
+
+    add_highlight(ctx, name, filters, noglobal)
+    await ctx.send("👍")
 
 @bot.command()
 async def remove(ctx, *names):
