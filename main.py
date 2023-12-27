@@ -348,7 +348,7 @@ async def add(ctx, name, *, text):
                 sq = "'"
                 err += f"I think you meant to write `{ctx.invoked_with} \"{name.strip(sq)}\"`."
             elif name.startswith("/"):
-                err += f"I think you meant to write `{ctx.invoked_with} {name.strip('/')} {name}`."
+                err += f"I think you meant to write `{ctx.invoked_with} \"{name.strip('/')}\" {name}`."
         await ctx.send(err or "👍")
 
 @bot.command()
