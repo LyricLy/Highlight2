@@ -190,6 +190,14 @@ def do_debounce(channel_id, user_id, user, successes):
     else:
         return [success for success in successes if check_single_debounce(user, (channel_id, user_id, success))]
 
+def regex_of_fixed(string):
+    r = re.escape(string)
+    if re.search(r"^\w", string):
+        r = r"\b" + r
+    if re.search(r"\w$", string):
+        r = r + r"\b"
+    return r
+
 def successes_of_message(user, message):
     successes = []
     global_result = True
@@ -199,7 +207,7 @@ def successes_of_message(user, message):
         for f in merge_filters(highlight["filters"]):
             t = f["type"]
             if t == "literal":
-                x = matches(r"\b" + re.escape(f['text']) + r"\b", message.content, "i")
+                x = matches(regex_of_fixed(f['text']), message.content, "i")
             elif t == "regex":
                 x = matches(f['regex'], message.content, f['flags'])
             elif t == "guild":
