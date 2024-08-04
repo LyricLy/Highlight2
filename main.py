@@ -28,7 +28,6 @@ bot = commands.Bot(
     allowed_mentions=discord.AllowedMentions(everyone=False),
     intents=intents,
     help_command=HighlightHelpCommand(),
-    max_messages=None,
 )
 async def setup():
     await bot.load_extension("jishaku")
