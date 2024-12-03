@@ -1,11 +1,11 @@
 import unicodedata
 
 import re2 as re
-from re import error as ReError
+import parse_discord
 import discord
 from discord.ext import commands
 
-from utils import regex_min
+from utils import matches
 
 
 class LexFailure(ValueError):
@@ -146,15 +146,25 @@ class StringView:
                 self.consume()
 
             try:
-                if not regex_min(p):
-                    self.fail("regex should not match the empty string", "if you want to match any message, you don't need to provide a regex")
-            except ReError:
-                pass
-            try:
                 re.compile(p)
             except re.error as e:
                 self.fail(f"regex is invalid: {e.args[0].decode()}")
+
+            if matches(p, "", ""):
+                self.fail("regex should not match the empty string", "if you want to match any message, you don't need to provide a regex condition")
+
             return {"type": "regex", "regex": p, "flags": "".join(sorted(flags)), "negate": negate}
+        elif self.consume_literal("+"):
+            if negate:
+                self.fail("reaction conditions cannot be negated")
+            self.skip_ws()
+            match parse_discord.parse(self.string[self.idx:]).nodes:
+                case [(parse_discord.UnicodeEmoji() | parse_discord.CustomEmoji()) as e, *_]:
+                    s = str(parse_discord.Markup([e]))
+                case _:
+                    self.fail("expected emoji")
+            self.consume(len(s))
+            return {"type": "react", "emoji": s, "negate": False}
         elif self.consume_literal("guild:"):
             w = self.get_quoted_word()
             guild = discord.utils.get(self.bot.guilds, name=w)

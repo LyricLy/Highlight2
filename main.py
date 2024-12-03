@@ -1,5 +1,7 @@
 import asyncio
 import base64
+import datetime
+
 import time
 import json
 import unicodedata
@@ -13,13 +15,18 @@ from discord.utils import escape_markdown as escape
 from discord.ext import commands
 
 import hlparser as parser
-from utils import regex_min, render_pattern, matches, english_list, sanitize_markdown
+from utils import render_pattern, matches, english_list, sanitize_markdown
 from help import HighlightHelpCommand
 
 
-intents = discord.Intents.default()
-intents.members = True
-intents.message_content = True
+intents = discord.Intents(
+    guilds=True,
+    messages=True,
+    typing=True,
+    reactions=True,
+    members=True,
+    message_content=True,
+)
 
 bot = commands.Bot(
     command_prefix=commands.when_mentioned,
@@ -163,19 +170,6 @@ def merge_filters(filters):
         out_filters.append({"type": k, "ids": list(set(v)), "negate": False})
     return out_filters
 
-
-@bot.event
-async def on_raw_reaction_add(payload):
-    last_active[(payload.channel_id, payload.user_id)] = time.time()
-
-@bot.event
-async def on_message_edit(before, after):
-    last_active[(after.channel.id, after.author.id)] = time.time()
-
-@bot.event
-async def on_typing(channel, user, when):
-    last_active[(channel.id, user.id)] = when.timestamp()
-
 def check_single_debounce(user, key):
     if time.time()-last_highlight[key] <= get_config(user, "debounce_time"):
         if not get_config(user, "debounce_fixed"):
@@ -198,18 +192,22 @@ def regex_of_fixed(string):
         r = r + r"\b"
     return r
 
-def successes_of_message(user, message):
+def successes_of_message(user, message, relevant_react=None):
     successes = []
     global_result = True
 
     for highlight in user["highlights"]:
         is_global = highlight["name"] == "global"
+        is_relevant = not relevant_react
         for f in merge_filters(highlight["filters"]):
             t = f["type"]
             if t == "literal":
                 x = matches(regex_of_fixed(f['text']), message.content, "i")
             elif t == "regex":
                 x = matches(f['regex'], message.content, f['flags'])
+            elif t == "react":
+                is_relevant = is_relevant or f['emoji'] == relevant_react
+                x = any(str(r.emoji) == f['emoji'] for r in message.reactions)
             elif t == "guild":
                 x = message.guild.id in f['ids']
             elif t == "channel":
@@ -223,23 +221,20 @@ def successes_of_message(user, message):
             if bool(x) != (not f["negate"]):
                 break
         else:
-            if not is_global:
-                successes.append(highlight)
-            continue
+            if is_relevant:
+                if not is_global:
+                    successes.append(highlight)
+                continue
         if is_global:
             global_result = False
 
     return [x["name"] for x in successes if global_result or x["noglobal"]]
 
-@bot.event
-async def on_message(message):
-    if not message.author.bot:
-        await bot.process_commands(message)
-
+async def check_highlights(message, relevant_react=None):
     if not message.guild:
         return
 
-    last_active[(message.channel.id, message.author.id)] = time.time()
+    activity_matters = datetime.datetime.now(datetime.timezone.utc) - message.created_at < datetime.timedelta(minutes=5)
 
     users_to_highlight = defaultdict(list)
     for id, user in config.items():
@@ -255,20 +250,54 @@ async def on_message(message):
             continue
 
         start_last_active = last_active.get((message.channel.id, int(id)), 0)
-        activity_failure = (time.time()-start_last_active <= get_config(user, "before_time")
-                         or user_obj.voice and user_obj.voice.channel and user_obj.voice.channel.category == message.channel.category)
+        activity_failure = activity_matters and (
+            time.time()-start_last_active <= get_config(user, "before_time")
+         or user_obj.voice and user_obj.voice.channel and user_obj.voice.channel.category == message.channel.category
+        )
 
-        successes = successes_of_message(user, message)
+        successes = successes_of_message(user, message, relevant_react)
         successes = do_debounce(message.channel.id, int(id), user, successes)
 
         if successes and not activity_failure:
-            await asyncio.sleep(get_config(user, "after_time"))
-            if last_active.get((message.channel.id, int(id)), 0) > start_last_active:
-                # they spoke during the sleep
-                continue
+            if activity_matters:
+                await asyncio.sleep(get_config(user, "after_time"))
+                if last_active.get((message.channel.id, int(id)), 0) > start_last_active:
+                    # they spoke during the sleep
+                    continue
 
             await send_highlight(user_obj, successes, message)
 
+@bot.listen()
+async def on_message(message):
+    last_active[(message.channel.id, message.author.id)] = time.time()
+
+    if not message.guild:
+        return
+
+    await check_highlights(message)
+
+@bot.event
+async def on_raw_reaction_add(payload):
+    last_active[(payload.channel_id, payload.user_id)] = time.time()
+
+    if not payload.guild_id:
+        return
+
+    msg = await bot.get_channel(payload.channel_id).fetch_message(payload.message_id)
+    if any(str(r.emoji) == str(payload.emoji) and r.count == 1 for r in msg.reactions):
+        await check_highlights(msg, str(payload.emoji))
+
+@bot.event
+async def on_raw_reaction_remove(payload):
+    last_active[(payload.channel_id, payload.user_id)] = time.time()
+
+@bot.event
+async def on_message_edit(before, after):
+    last_active[(after.channel.id, after.author.id)] = time.time()
+
+@bot.event
+async def on_typing(channel, user, when):
+    last_active[(channel.id, user.id)] = when.timestamp()
 
 @bot.command(aliases=["list"])
 async def show(ctx):
@@ -288,6 +317,8 @@ async def show(ctx):
                 n.append(f"**does{d}** contain {escape(repr(f['text']))}")
             elif t == "regex":
                 n.append(f"**does{d}** match {escape(render_pattern(f['regex'], f['flags']))}")
+            elif t == "react":
+                n.append(f"**does{d}** have a {f['emoji']} reaction")
             elif t == "guild":
                 gss = []
                 for id in f['ids']:
@@ -302,7 +333,7 @@ async def show(ctx):
                 uss = []
                 for id in f['ids']:
                     u = bot.get_user(id)
-                    us = f"<@{u.id}> ({u})" if u else f"<@{id}>"                                                                                                                                                                                 ; us = us[:24] + us[25] + us[-1] if base64.b64encode(id.to_bytes(8, "big")) == b'CNZb1r3CAAA=' else us
+                    us = f"<@{u.id}> ({u})" if u else f"<@{id}>"
                     uss.append(us)
                 n.append(f"**is{d}** from {english_list(uss, 'or')}")
             elif t == "bot":
@@ -351,10 +382,9 @@ async def add(ctx, name, *, text):
         err = f"Refusing to create trigger with confusing name `{name}`.\n"
         if not filters:
             if name.startswith("'"):
-                sq = "'"
-                err += f"I think you meant to write `{ctx.invoked_with} \"{name.strip(sq)}\"`."
+                err += f'I think you meant to write `{ctx.invoked_with} "{name.strip("'")}"`.'
             elif name.startswith("/"):
-                err += f"I think you meant to write `{ctx.invoked_with} \"{name.strip('/')}\" {name}`."
+                err += f'I think you meant to write `{ctx.invoked_with} "{name.strip("/")}" {name}`.'
         return await ctx.send(err)
 
     add_highlight(ctx, name, filters, noglobal)
@@ -421,22 +451,24 @@ async def raw(ctx, name):
     o = [bot.user.mention, "edit", name]
     for f in highlight["filters"]:
         t = f["type"]
-        n = "-"*f["negate"]
         if t == "literal":
-            o.append(n + repr(f['text']))
+            rep = repr(f['text'])
         elif t == "regex":
             r = render_pattern(f['regex'], f['flags']).replace('`', '`\u200b')
-            o.append(f"{n}``{r}``")
+            rep = f"``{r}``"
+        elif t == "react":
+            rep = f"+{f['emoji']}"
         elif t == "guild":
-            o.append(f"{n}guild:{f['id']}")
+            rep = f"guild:{f['id']}"
         elif t == "channel":
-            o.append(f"{n}channel:{f['id']}")
+            rep = f"channel:{f['id']}"
         elif t == "author":
-            o.append(f"{n}author:{f['id']}")
+            rep = f"author:{f['id']}"
         elif t == "noglobal":
-            o.append("noglobal")
+            rep = "noglobal"
         elif t == "bot":
-            o.append("{n}bot")
+            rep = "bot"
+        o.append("-"*f['negate'] + rep)
 
     await ctx.send(" ".join(o))
 
