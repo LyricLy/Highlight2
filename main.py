@@ -384,7 +384,7 @@ async def add(ctx, name, *, text):
         pass
     else:
         # it's suspicious if the name of the trigger parses as a valid rule. this is probably a mistake, so we reject it.
-        err = f'Refusing to create trigger with confusing name `{name}`.\nI think you meant to write `{ctx.invoked_with} "{name.strip("'")}" {name}`.'
+        err = f'Refusing to create trigger with confusing name `{name}`.\nI think you meant to write `{ctx.invoked_with} "{name.strip("/+'")}" {name}`.'
         return await ctx.send(err)
 
     add_highlight(ctx, name, filters, noglobal)
