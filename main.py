@@ -378,13 +378,13 @@ async def add(ctx, name, *, text):
     except parser.LexFailure as e:
         return await ctx.send(f"Error while parsing input.\n```{e}```")
 
-    if name.startswith(("'", "/")):
-        err = f"Refusing to create trigger with confusing name `{name}`.\n"
-        if not filters:
-            if name.startswith("'"):
-                err += f'I think you meant to write `{ctx.invoked_with} "{name.strip("'")}"`.'
-            elif name.startswith("/"):
-                err += f'I think you meant to write `{ctx.invoked_with} "{name.strip("/")}" {name}`.'
+    try:
+        parser.parse(name, ctx)
+    except parser.LexFailure:
+        pass
+    else:
+        # it's suspicious if the name of the trigger parses as a valid rule. this is probably a mistake, so we reject it.
+        err = f'Refusing to create trigger with confusing name `{name}`.\nI think you meant to write `{ctx.invoked_with} "{name.strip("'")}" {name}`.'
         return await ctx.send(err)
 
     add_highlight(ctx, name, filters, noglobal)
