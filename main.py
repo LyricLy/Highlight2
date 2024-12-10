@@ -197,6 +197,12 @@ def successes_of_message(user, message, relevant_react=None):
     global_result = True
 
     for highlight in user["highlights"]:
+        if highlight["name"] == "global" and any(f["type"] == "react" for f in highlight["filters"]):
+            # if something in the global rule is relevant, every rule is relevant
+            relevant_react = None
+            break
+
+    for highlight in user["highlights"]:
         is_global = highlight["name"] == "global"
         is_relevant = not relevant_react
         for f in merge_filters(highlight["filters"]):
@@ -221,10 +227,9 @@ def successes_of_message(user, message, relevant_react=None):
             if bool(x) != (not f["negate"]):
                 break
         else:
-            if is_relevant:
-                if not is_global:
-                    successes.append(highlight)
-                continue
+            if is_relevant and not is_global:
+                successes.append(highlight)
+            continue
         if is_global:
             global_result = False
 
@@ -250,7 +255,7 @@ async def check_highlights(message, relevant_react=None):
             continue
 
         start_last_active = last_active.get((message.channel.id, int(id)), 0)
-        activity_failure = activity_matters and (
+        activity_failure = (activity_matters or message.author == user_obj) and (
             time.time()-start_last_active <= get_config(user, "before_time")
          or user_obj.voice and user_obj.voice.channel and user_obj.voice.channel.category == message.channel.category
         )
