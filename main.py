@@ -179,7 +179,7 @@ def check_single_debounce(user, key):
     return True
 
 def do_debounce(channel_id, user_id, user, successes):
-    if get_config(user, "debounce_global"):
+    if get_config(user, "debounce_global") and successes:
         return successes*check_single_debounce(user, (channel_id, user_id))
     else:
         return [success for success in successes if check_single_debounce(user, (channel_id, user_id, success))]
