@@ -90,8 +90,7 @@ class StringView:
             self.consume()
 
     def lex_rule(self, guild):
-        if self.peek() in ("!", "-"):
-            self.consume()
+        if self.consume_literal("!") or self.consume_literal("-"):
             self.skip_ws()
             negate = True
         else:
@@ -165,7 +164,7 @@ class StringView:
                     self.fail("expected emoji")
             self.consume(len(s))
             return {"type": "react", "emoji": s, "negate": False}
-        elif self.consume_literal("guild:"):
+        elif self.consume_literal("guild:") or self.consume_literal("server:"):
             w = self.get_quoted_word()
             guild = discord.utils.get(self.bot.guilds, name=w)
             if not guild:
@@ -189,7 +188,7 @@ class StringView:
             if not channel:
                 self.fail("unknown channel")
             return {"type": "channel", "id": channel.id, "negate": negate}
-        elif self.consume_literal("author:") or self.consume_literal("from:") or self.consume_literal("user"):
+        elif self.consume_literal("author:") or self.consume_literal("from:") or self.consume_literal("user:"):
             w = self.get_quoted_word()
             if m := re.fullmatch("<@!?([0-9]+)>", w):
                 w = m.group(1)
