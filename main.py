@@ -7,7 +7,7 @@ import json
 import unicodedata
 import os
 from collections import defaultdict
-from typing import Union
+from typing import Union, Optional
 
 import re2 as re
 import discord
@@ -124,7 +124,7 @@ def english_list(l, merger="and"):
     else:
         return f"{', '.join(l[:-1])}, {merger} {l[-1]}"
 
-async def send_highlight(user, patterns, msg):
+async def send_highlight(user, patterns, msg, provenance):
     before = [x async for x in msg.channel.history(before=msg, limit=2)][::-1]
     after = [x async for x in msg.channel.history(after=msg, limit=2)]
 
@@ -151,7 +151,7 @@ async def send_highlight(user, patterns, msg):
     pattern_string = english_list([repr(x) for x in patterns])
     highlights = "Highlight" if len(patterns) == 1 else "Highlights"
     try:
-        await user.send(f'{highlights} {pattern_string} in {msg.channel.mention} (on **{msg.guild.name}**) by {msg.author.mention} ({msg.author.display_name})', embed=embed)
+        await user.send(f'{highlights} {pattern_string} in {msg.channel.mention} (on **{msg.guild.name}**) by {provenance.mention} ({provenance.display_name})', embed=embed)
     except discord.HTTPException:
         pass
 
@@ -235,7 +235,7 @@ def successes_of_message(user, message, relevant_react=None):
 
     return [x["name"] for x in successes if global_result or x["noglobal"]]
 
-async def check_highlights(message, relevant_react=None):
+async def check_highlights(message, provenance, relevant_react=None):
     if not message.guild:
         return
 
@@ -270,7 +270,7 @@ async def check_highlights(message, relevant_react=None):
                     # they spoke during the sleep
                     continue
 
-            await send_highlight(user_obj, successes, message)
+            await send_highlight(user_obj, successes, message, provenance)
 
 @bot.listen()
 async def on_message(message):
@@ -279,7 +279,7 @@ async def on_message(message):
     if not message.guild:
         return
 
-    await check_highlights(message)
+    await check_highlights(message, message.author)
 
 @bot.event
 async def on_raw_reaction_add(payload):
@@ -290,7 +290,7 @@ async def on_raw_reaction_add(payload):
 
     msg = await bot.get_channel(payload.channel_id).fetch_message(payload.message_id)
     if any(str(r.emoji) == str(payload.emoji) and r.count == 1 for r in msg.reactions):
-        await check_highlights(msg, str(payload.emoji))
+        await check_highlights(msg, payload.member, str(payload.emoji))
 
 @bot.event
 async def on_raw_reaction_remove(payload):
@@ -432,12 +432,15 @@ async def enable(ctx):
     await ctx.send("👍")
 
 @bot.command()
-async def test(ctx):
+async def test(ctx, where: Optional[discord.Message]):
     """Simulate what would happen if someone sent a certain message, ignoring all delays and debouncing."""
-    successes = successes_of_message(get_user(ctx.author), ctx.message)
+    if where is None:
+        where = ctx.message.reference.resolved if ctx.message.reference and ctx.message.reference.resolved else ctx.message
+
+    successes = successes_of_message(get_user(ctx.author), where)
     if not successes:
         return await ctx.send("No highlight matched.")
-    await send_highlight(ctx, successes, ctx.message)
+    await send_highlight(ctx, successes, where, ctx.author)
 
 @bot.command()
 async def raw(ctx, name):
