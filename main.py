@@ -297,8 +297,8 @@ async def on_raw_reaction_remove(payload):
     last_active[(payload.channel_id, payload.user_id)] = time.time()
 
 @bot.event
-async def on_message_edit(before, after):
-    last_active[(after.channel.id, after.author.id)] = time.time()
+async def on_raw_message_edit(payload):
+    last_active[(payload.channel_id, payload.data["author"]["id"])] = time.time()
 
 @bot.event
 async def on_typing(channel, user, when):
