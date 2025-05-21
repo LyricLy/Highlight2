@@ -179,7 +179,7 @@ class StringView:
             w = self.get_quoted_word()
             if m := re.fullmatch("<#([0-9]+)>", w):
                 w = m.group(1)
-            channel = discord.utils.get(guild.channels, name=w.removeprefix("#"))
+            channel = discord.utils.get(guild.channels, name=w.removeprefix("#")) if guild else None
             if not channel:
                 try:
                     channel = self.bot.get_channel(int(w))
@@ -192,7 +192,7 @@ class StringView:
             w = self.get_quoted_word()
             if m := re.fullmatch("<@!?([0-9]+)>", w):
                 w = m.group(1)
-            user = guild.get_member_named(w)
+            user = guild.get_member_named(w) if guild else None
             if not user:
                 try:
                     user = self.bot.get_user(int(w))

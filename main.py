@@ -359,7 +359,9 @@ async def show(ctx):
 
 def add_highlight(ctx, name, filters=None, noglobal=False):
     if not filters:
-        filters = [{"type": "literal", "text": name, "negate": False}, {"type": "guild", "id": ctx.guild.id, "negate": False}]
+        filters = [{"type": "literal", "text": name, "negate": False}]
+        if ctx.guild:
+            filters.append({"type": "guild", "id": ctx.guild.id, "negate": False})
     highlights = get_user(ctx.author)["highlights"]
     for highlight in highlights:
         if highlight["name"] == name:
