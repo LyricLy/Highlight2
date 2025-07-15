@@ -159,7 +159,7 @@ def merge_filters(filters):
     rules = defaultdict(list)
     out_filters = []
     for f in filters:
-        if f["type"] in ("guild", "channel", "author"):
+        if f["type"] in ("guild", "channel", "exact_channel", "author"):
             if not f["negate"]:
                 rules[f["type"]].append(f['id'])
             else:
@@ -216,8 +216,8 @@ def successes_of_message(user, message, relevant_react=None):
                 x = any(str(r.emoji) == f['emoji'] for r in message.reactions)
             elif t == "guild":
                 x = message.guild.id in f['ids']
-            elif t == "channel":
-                x = message.channel.id in f['ids']
+            elif t in ("channel", "exact_channel"):
+                x = message.channel.id in f['ids'] or t == "channel" and getattr(message.channel, "parent_id", None) in f['ids']
             elif t == "author":
                 x = message.author.id in f['ids']
             elif t == "bot":
@@ -251,7 +251,7 @@ async def check_highlights(message, provenance, relevant_react=None):
             last_active[(message.channel.id, int(id))] = time.time()
 
         if (not message.channel.permissions_for(user_obj).read_messages or not user.get("enabled", True)
-         or message.author.id in (blocked := user.get("blocked", [])) or message.channel.id in blocked):
+         or message.author.id in (blocked := user.get("blocked", [])) or message.channel.id in blocked or getattr(message.channel, "parent_id", None) in blocked):
             continue
 
         start_last_active = last_active.get((message.channel.id, int(id)), 0)
@@ -331,9 +331,9 @@ async def show(ctx):
                     gs = f"server {escape(g.name)}" if g else f"<unknown server {id}>"
                     gss.append(gs)
                 n.append(f"**is{d}** in {english_list(gss, 'or')}")
-            elif t == "channel":
+            elif t in ("channel", "exact_channel"):
                 cs = [f"<#{id}>" for id in f['ids']]
-                n.append(f"**is{d}** in {english_list(cs, 'or')}")
+                n.append(f"**is{d}** in {english_list(cs, 'or')}{' (excluding threads)'*(t == 'exact_channel')}")
             elif t == "author":
                 uss = []
                 for id in f['ids']:
@@ -468,12 +468,8 @@ async def raw(ctx, name):
             rep = f"``{r}``"
         elif t == "react":
             rep = f"+{f['emoji']}"
-        elif t == "guild":
-            rep = f"guild:{f['id']}"
-        elif t == "channel":
-            rep = f"channel:{f['id']}"
-        elif t == "author":
-            rep = f"author:{f['id']}"
+        elif t in ("guild", "channel", "exact_channel", "author"):
+            rep = f"{t}:{f['id']}"
         elif t == "noglobal":
             rep = "noglobal"
         elif t == "bot":
@@ -494,7 +490,7 @@ async def migrate(ctx):
     await ctx.send("👍")
 
 @bot.command()
-async def block(ctx, *, what: Union[discord.TextChannel, discord.User, discord.Thread]):
+async def block(ctx, *, what: Union[discord.TextChannel, discord.User, discord.Thread, discord.ForumChannel]):
     """Block a user or channel from activating highlights."""
 
     user = get_user(ctx.author)
