@@ -61,7 +61,7 @@ settings = {
     "debounce_fixed": ("debounce-fixed", "Fixed debounce window", "Apply a fixed window for debouncing. "
                                                                   "Without this option enabled, the debounce cooldown will reset every time a highlight triggers, "
                                                                   "even if the cooldown has not run out yet.", True, bool),
-    "mention_activity": ("mention-activity", "Mention activity", "Treat people mentioning (pinging) you as activity for the purposes of cooldowns.", False, bool),
+    "mention_activity": ("no-mention-dup", "Don't duplicate mentions", "Don't highlight you in messages you were mentioned (pinged) in. Also makes mentions affect global debouncing.", False, bool),
 }
 
 @bot.group(invoke_without_command=True, name="settings", aliases=["opt", "cfg", "config"])
@@ -178,11 +178,11 @@ def check_single_debounce(user, key):
     last_highlight[key] = time.time()
     return True
 
-def do_debounce(channel_id, user_id, user, successes):
+def do_debounce(user, key, successes):
     if get_config(user, "debounce_global") and successes:
-        return successes*check_single_debounce(user, (channel_id, user_id))
+        return successes*check_single_debounce(user, key)
     else:
-        return [success for success in successes if check_single_debounce(user, (channel_id, user_id, success))]
+        return [success for success in successes if check_single_debounce(user, (*key, success))]
 
 def regex_of_fixed(string):
     r = re.escape(string)
@@ -243,30 +243,32 @@ async def check_highlights(message, provenance, relevant_react=None):
 
     users_to_highlight = defaultdict(list)
     for id, user in config.items():
+        key = message.channel.id, int(id)
         user_obj = message.guild.get_member(int(id))
         if not user_obj:
             continue
 
         if get_config(user, "mention_activity") and user_obj.mentioned_in(message):
-            last_active[(message.channel.id, int(id))] = time.time()
+            1check_single_debounce(user, key)
+            continue
 
         if (not message.channel.permissions_for(user_obj).read_messages or not user.get("enabled", True)
          or message.author.id in (blocked := user.get("blocked", [])) or message.channel.id in blocked or getattr(message.channel, "parent_id", None) in blocked):
             continue
 
-        start_last_active = last_active.get((message.channel.id, int(id)), 0)
+        start_last_active = last_active.get(key, 0)
         activity_failure = (activity_matters or message.author == user_obj) and (
             time.time()-start_last_active <= get_config(user, "before_time")
          or user_obj.voice and user_obj.voice.channel and user_obj.voice.channel.category == message.channel.category
         )
 
         successes = successes_of_message(user, message, relevant_react)
-        successes = do_debounce(message.channel.id, int(id), user, successes)
+        successes = do_debounce(user, key, successes)
 
         if successes and not activity_failure:
             if activity_matters:
                 await asyncio.sleep(get_config(user, "after_time"))
-                if last_active.get((message.channel.id, int(id)), 0) > start_last_active:
+                if last_active.get(key, 0) > start_last_active:
                     # they spoke during the sleep
                     continue
 
