@@ -205,6 +205,8 @@ class StringView:
             return {"type": "noglobal"}
         elif self.consume_literal("bot"):
             return {"type": "bot", "negate": negate}
+        elif self.consume_literal("reply"):
+            return {"type": "reply", "negate": negate}
         else:
             self.fail(f"unknown start of token '{self.peek()}' ({unicodedata.name(self.peek()).title()})", "wrap literal strings in quotes and regular expressions in slashes")
 
@@ -215,6 +217,9 @@ def parse(text, ctx):
     noglobal = False
     while not view.is_eof:
         rule = view.lex_rule(ctx.guild)
+        if rule["type"] == "reply":
+            # dumb shim but reply rules don't support setting your own id currently
+            rule["id"] = ctx.author.id
         if rule["type"] == "noglobal":
             noglobal = True
         else:

@@ -159,7 +159,7 @@ def merge_filters(filters):
     rules = defaultdict(list)
     out_filters = []
     for f in filters:
-        if f["type"] in ("guild", "channel", "exact_channel", "author"):
+        if f["type"] in ("guild", "channel", "exact_channel", "author", "reply"):
             if not f["negate"]:
                 rules[f["type"]].append(f['id'])
             else:
@@ -222,6 +222,8 @@ def successes_of_message(user, message, relevant_react=None):
                 x = message.author.id in f['ids']
             elif t == "bot":
                 x = message.author.bot
+            elif t == "reply":
+                x = message.type == discord.MessageType.reply and message.reference.resolved and message.reference.resolved.author.id in f['ids']
             else:
                 assert False
             if bool(x) != (not f["negate"]):
@@ -249,7 +251,7 @@ async def check_highlights(message, provenance, relevant_react=None):
             continue
 
         if get_config(user, "mention_activity") and user_obj.mentioned_in(message):
-            1check_single_debounce(user, key)
+            check_single_debounce(user, key)
             continue
 
         if (not message.channel.permissions_for(user_obj).read_messages or not user.get("enabled", True)
@@ -344,7 +346,9 @@ async def show(ctx):
                     uss.append(us)
                 n.append(f"**is{d}** from {english_list(uss, 'or')}")
             elif t == "bot":
-                n.append("**is{d}** from a bot")
+                n.append(f"**is{d}** from a bot")
+            elif t == "reply":
+                n.append(f"**is{d}** a reply to you")
         noglobal = " (noglobal)"*highlight["noglobal"]
         line = f"{escape(highlight['name'])}{noglobal}: {english_list(n)}\n"
         embed.description += line  # type: ignore
@@ -388,13 +392,14 @@ async def add(ctx, name, *, text):
         return await ctx.send(f"Error while parsing input.\n```{e}```")
 
     try:
-        parser.parse(name, ctx)
+        name_filters, name_noglobal = parser.parse(name, ctx)
     except parser.LexFailure:
         pass
     else:
-        # it's suspicious if the name of the trigger parses as a valid rule. this is probably a mistake, so we reject it.
-        err = f'Refusing to create trigger with confusing name `{name}`.\nI think you meant to write `{ctx.invoked_with} "{name.strip("/+'")}" {name}`.'
-        return await ctx.send(err)
+        if not all(f in filters for f in name_filters) or name_noglobal > noglobal:
+            # it's suspicious if the name of the trigger parses as a valid rule, unless it's included in the rule we have. this is probably a mistake, so we reject it.
+            err = f'Refusing to create trigger with confusing name `{name}`.\nI think you meant to write `{ctx.invoked_with} "{name.strip("/+'")}" {name}{text}`.'
+            return await ctx.send(err)
 
     add_highlight(ctx, name, filters, noglobal)
     await ctx.send("👍")
@@ -476,6 +481,8 @@ async def raw(ctx, name):
             rep = "noglobal"
         elif t == "bot":
             rep = "bot"
+        elif t == "reply":
+            rep = "reply"
         o.append("-"*f['negate'] + rep)
 
     await ctx.send(" ".join(o))
