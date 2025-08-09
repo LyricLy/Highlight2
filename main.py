@@ -26,6 +26,7 @@ intents = discord.Intents(
     reactions=True,
     members=True,
     message_content=True,
+    voice_states=True,
 )
 
 bot = commands.Bot(
