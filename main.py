@@ -254,9 +254,15 @@ async def check_highlights(message, provenance, relevant_react=None):
             check_single_debounce(user, key)
             continue
 
-        if (not message.channel.permissions_for(user_obj).read_messages or not user.get("enabled", True)
+        user_perms = message.channel.permissions_for(user_obj)
+        if (not user_perms.read_messages or not user.get("enabled", True)
          or message.author.id in (blocked := user.get("blocked", [])) or message.channel.id in blocked or getattr(message.channel, "parent_id", None) in blocked):
             continue
+        if message.channel.type == discord.ChannelType.private_thread and not user_perms.manage_threads:
+            try:
+                await message.channel.fetch_member(user_obj.id)
+            except discord.NotFound:
+                continue
 
         start_last_active = last_active.get(key, 0)
         activity_failure = (activity_matters or message.author == user_obj) and (
