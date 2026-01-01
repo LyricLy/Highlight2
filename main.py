@@ -258,7 +258,7 @@ async def check_highlights(message, provenance, relevant_react=None):
         if (not user_perms.read_messages or not user.get("enabled", True)
          or message.author.id in (blocked := user.get("blocked", [])) or message.channel.id in blocked or getattr(message.channel, "parent_id", None) in blocked):
             continue
-        if message.channel.type == discord.ChannelType.private_thread and not user_perms.manage_threads:
+        if message.channel.type == discord.ChannelType.private_thread:
             try:
                 await message.channel.fetch_member(user_obj.id)
             except discord.NotFound:
