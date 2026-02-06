@@ -1,11 +1,11 @@
 from typing import Any
 
 import re2 as re
-from parse_discord import parse
+from parse_discord import *
 
 
 def render_pattern(pattern, flags):
-    return f"/{pattern}/{flags}"
+    return f"/{pattern}/{flags}"    
 
 regex_cache = {}
 def matches(regex, content, flags):
@@ -33,5 +33,25 @@ def english_list(l, merger="and"):
     else:
         return f"{', '.join(l[:-1])}, {merger} {l[-1]}"
 
-def sanitize_markdown(text):
-    return str(parse(text))
+def cut(text, to):
+    return text[:to], to - len(text)
+
+def truncate(markup, to):
+    for i, node in enumerate(markup.nodes):
+        if to <= 0:
+            del markup.nodes[i:]
+            break
+        match node:
+            case Text(c):
+                node.text, to = cut(c, to)
+            case Codeblock(c) | InlineCode(c):
+                node.content, to = cut(c, to)
+            case _:
+                for inner in node.inners:
+                    to = truncate(inner, to)
+    return to
+
+def display_message(text):
+    m = parse(text)
+    truncated = truncate(m, 700) < 0
+    return f"{m}{'...'*truncated}"

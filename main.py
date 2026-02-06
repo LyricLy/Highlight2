@@ -14,7 +14,7 @@ from discord.utils import escape_markdown as escape
 from discord.ext import commands
 
 import hlparser as parser
-from utils import render_pattern, matches, english_list, sanitize_markdown
+from utils import render_pattern, matches, english_list, display_message
 from help import HighlightHelpCommand
 
 
@@ -139,11 +139,7 @@ async def send_highlight(user, patterns, msg, provenance):
         if bold:
             head_str = f"**{head_str}**"
 
-        content = message.content
-        if len(content) > 700:
-            content = f"{content[:700]}..."
-
-        lines.append(f"{head_str}: {sanitize_markdown(content)}")
+        lines.append(f"{head_str}: {display_message(message.content)}")
 
     embed = discord.Embed(description='\n'.join(lines))
     embed.add_field(name="\u200b", value=msg.jump_url)
