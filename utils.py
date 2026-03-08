@@ -44,7 +44,7 @@ def truncate(markup, to):
         match node:
             case Text(c):
                 node.text, to = cut(c, to)
-            case Codeblock(c) | InlineCode(c):
+            case Codeblock(_, c) | InlineCode(c):
                 node.content, to = cut(c, to)
             case _:
                 for inner in node.inners:
